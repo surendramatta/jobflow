@@ -1,0 +1,252 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
+  name          String?
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  accounts      Account[]
+  sessions      Session[]
+  profile       Profile?
+  jobPostings   JobPosting[]
+  matches       Match[]
+  tailoringDrafts TailoringDraft[]
+  applications  ApplicationAttempt[]
+  inboxEvents   InboxEvent[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+model Profile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique @map("user_id")
+  resumeText          String?  @map("resume_text") @db.Text
+  resumeFacts         Json?    @map("resume_facts") // structured fact store
+  workAuthorization   String?  @map("work_authorization") // e.g., "US Citizen", "H1B", "OPT"
+  locationPreference  String?  @map("location_preference")
+  remotePreference    String?  @map("remote_preference") // "remote", "hybrid", "onsite", "any"
+  coverLetterTemplate String?  @map("cover_letter_template") @db.Text
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model JobPosting {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  url             String
+  company         String
+  title           String
+  location        String?
+  description     String   @db.Text
+  descriptionHtml String?  @map("description_html") @db.Text
+  atsType         String?  @map("ats_type") // "greenhouse", "workday", "lever", "ashby", "other"
+  atsJobId        String?  @map("ats_job_id")
+  seniority       String?  // "entry", "mid", "senior", "staff", "principal"
+  employmentType  String?  @map("employment_type") // "full-time", "contract", "internship"
+  remoteStatus    String?  @map("remote_status") // "remote", "hybrid", "onsite"
+  salaryRange     String?  @map("salary_range")
+  extractedSkills Json?    @map("extracted_skills") // array of skills
+  requiredSkills  Json?    @map("required_skills")
+  preferredSkills Json?    @map("preferred_skills")
+  postingDate     DateTime? @map("posting_date")
+  status          String   @default("active") // "active", "closed", "expired"
+  source          String   @default("manual") // "manual", "scraped", "api"
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matches Match[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("job_postings")
+}
+
+model Match {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  jobId       String   @map("job_id")
+  score       Float    // 0.0 to 1.0
+  matchReasons  Json?  @map("match_reasons") // array of reason strings
+  skillGaps   Json?    @map("skill_gaps") // skills missing from resume
+  seniorityMatch Boolean? @map("seniority_match")
+  locationMatch  Boolean? @map("location_match")
+  workAuthMatch  Boolean? @map("work_auth_match")
+  status      String   @default("pending") // "pending", "queued", "tailoring", "approved", "submitted", "rejected", "failed"
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job           JobPosting       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  tailoringDrafts TailoringDraft[]
+  applications  ApplicationAttempt[]
+
+  @@unique([userId, jobId])
+  @@index([userId])
+  @@index([status])
+  @@map("matches")
+}
+
+model TailoringDraft {
+  id              String   @id @default(cuid())
+  matchId         String   @map("match_id")
+  userId          String   @map("user_id")
+  version         Int      @default(1)
+  tailoredResume  String   @map("tailored_resume") @db.Text
+  tailoredCoverLetter String? @map("tailored_cover_letter") @db.Text
+  diffMetadata    Json?    @map("diff_metadata") // structured diff: changed bullets, keyword coverage
+  rationale       String?  @db.Text // why changes were made
+  keywordCoverage Json?    @map("keyword_coverage") // which job keywords are covered
+  factsUsed       Json?    @map("facts_used") // which resume facts were selected
+  status          String   @default("draft") // "draft", "pending_approval", "approved", "rejected"
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  match     Match           @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approvals ApprovalEvent[]
+
+  @@index([matchId])
+  @@index([status])
+  @@map("tailoring_drafts")
+}
+
+model ApprovalEvent {
+  id              String   @id @default(cuid())
+  draftId         String   @map("draft_id")
+  userId          String   @map("user_id")
+  decision        String   // "approved", "rejected"
+  feedback        String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  draft TailoringDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([draftId])
+  @@map("approval_events")
+}
+
+model ApplicationAttempt {
+  id              String   @id @default(cuid())
+  matchId         String   @map("match_id")
+  userId          String   @map("user_id")
+  draftId         String?  @map("draft_id")
+  atsType         String   @map("ats_type") // "greenhouse", "workday", etc.
+  atsAdapter      String?  @map("ats_adapter") // which adapter was used
+  payload         Json?    // the submitted form data
+  method          String   @default("manual") // "api", "extension", "manual"
+  status          String   @default("pending") // "pending", "submitted", "confirmed", "failed"
+  resultMessage   String?  @map("result_message") @db.Text
+  submittedAt     DateTime? @map("submitted_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  match   Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  receipt Receipt?
+
+  @@index([matchId])
+  @@index([status])
+  @@map("application_attempts")
+}
+
+model Receipt {
+  id              String   @id @default(cuid())
+  attemptId       String   @unique @map("attempt_id")
+  fieldsSubmitted Json?    @map("fields_submitted") // exact fields answered
+  attachmentsUsed Json?    @map("attachments_used") // filenames of uploaded docs
+  atsConfirmation String?  @map("ats_confirmation") // confirmation number/email
+  screenshotUrl   String?  @map("screenshot_url")
+  rawResponse     String?  @map("raw_response") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  attempt ApplicationAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@map("receipts")
+}
+
+model InboxEvent {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  applicationId   String?  @map("application_id")
+  emailSubject    String   @map("email_subject")
+  emailFrom       String   @map("email_from")
+  emailBody       String   @map("email_body") @db.Text
+  parsedStatus    String?  @map("parsed_status") // "interview_request", "rejection", "offer", "follow_up"
+  parsedAction    String?  @map("parsed_action") // suggested next action
+  isRead          Boolean  @default(false) @map("is_read")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([parsedStatus])
+  @@map("inbox_events")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?  @map("user_id")
+  entityType  String   @map("entity_type") // "job", "match", "draft", "application"
+  entityId    String   @map("entity_id")
+  action      String   // "created", "updated", "deleted", "approved", "submitted"
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
