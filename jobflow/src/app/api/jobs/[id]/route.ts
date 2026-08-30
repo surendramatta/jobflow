@@ -4,11 +4,11 @@ import { db } from '@/lib/db';
 // GET /api/jobs/[id] - Get single job
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = request.headers.get('x-user-id') || 'demo-user';
-    const { id } = params;
+    const { id } = await params;
 
     const job = await db.jobPosting.findFirst({
       where: { id, userId },
@@ -41,11 +41,11 @@ export async function GET(
 // DELETE /api/jobs/[id] - Delete job
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const userId = request.headers.get('x-user-id') || 'demo-user';
-    const { id } = params;
+    const { id } = await params;
 
     await db.jobPosting.deleteMany({
       where: { id, userId },

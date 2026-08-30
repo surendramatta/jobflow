@@ -5,11 +5,11 @@ import { aiService } from '@/lib/ai';
 // POST /api/tailor/[matchId] - Generate tailored resume for a match
 export async function POST(
   request: NextRequest,
-  { params }: { params: { matchId: string } }
+  { params }: { params: Promise<{ matchId: string }> }
 ) {
+  const { matchId } = await params;
   try {
     const userId = request.headers.get('x-user-id') || 'demo-user';
-    const { matchId } = params;
 
     // Fetch match with job and user profile
     const match = await db.match.findFirst({
@@ -98,7 +98,7 @@ export async function POST(
 
     // Update match status to failed
     await db.match.update({
-      where: { id: params.matchId },
+      where: { id: matchId },
       data: { status: 'failed' },
     });
 

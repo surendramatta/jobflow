@@ -5,6 +5,8 @@ import { StatusBadge } from '@/components/status-badge';
 import { ScoreRing } from '@/components/score-ring';
 import { formatDate } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 async function getStats(userId: string) {
   const [totalJobs, pendingApproval, submitted, avgScore] = await Promise.all([
     db.jobPosting.count({ where: { userId } }),

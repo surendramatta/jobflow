@@ -1,6 +1,8 @@
 import { db } from '@/lib/db';
 import { BarChart3, TrendingUp, Target, Calendar } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 async function getAnalytics(userId: string) {
   const [
     totalJobs,

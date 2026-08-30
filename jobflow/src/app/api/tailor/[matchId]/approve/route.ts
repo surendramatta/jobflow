@@ -4,11 +4,11 @@ import { db } from '@/lib/db';
 // POST /api/tailor/[matchId]/approve - Approve or reject a draft
 export async function POST(
   request: NextRequest,
-  { params }: { params: { matchId: string } }
+  { params }: { params: Promise<{ matchId: string }> }
 ) {
   try {
     const userId = request.headers.get('x-user-id') || 'demo-user';
-    const { matchId } = params;
+    const { matchId } = await params;
     const body = await request.json();
     const { draftId, decision, feedback } = body;
 
