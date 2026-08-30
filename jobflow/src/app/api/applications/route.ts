@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
+import { canSubmitDraft } from '@/lib/draft-policy';
 
 // GET /api/applications - List user's applications
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id') || 'demo-user';
+    const userId = (await getCurrentUser())?.id;
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const applications = await db.applicationAttempt.findMany({
       where: { userId },
@@ -29,9 +32,21 @@ export async function GET(request: NextRequest) {
 // POST /api/applications - Create application attempt
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id') || 'demo-user';
+    const userId = (await getCurrentUser())?.id;
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await request.json();
     const { matchId, draftId, method, payload } = body;
+
+    if (typeof matchId !== 'string' || typeof draftId !== 'string') {
+      return NextResponse.json({ error: 'Match and draft IDs required' }, { status: 400 });
+    }
+    if (method && method !== 'manual') {
+      return NextResponse.json({ error: 'Only manual submission tracking is supported' }, { status: 400 });
+    }
+    const draft = await db.tailoringDraft.findFirst({ where: { id: draftId, userId, matchId } });
+    if (!canSubmitDraft(draft, userId, matchId)) {
+      return NextResponse.json({ error: 'Approve your own draft before recording a submission' }, { status: 409 });
+    }
 
     const match = await db.match.findFirst({
       where: { id: matchId, userId },
@@ -44,7 +59,8 @@ export async function POST(request: NextRequest) {
 
     // For MVP, we only support manual submission tracking
     // The actual submission happens via browser extension or user action
-    const application = await db.applicationAttempt.create({
+    const application = await db.$transaction(async (tx) => {
+    const attempt = await tx.applicationAttempt.create({
       data: {
         matchId,
         userId,
@@ -58,18 +74,21 @@ export async function POST(request: NextRequest) {
     });
 
     // Update match status
-    await db.match.update({
+    await tx.match.update({
       where: { id: matchId },
       data: { status: 'submitted' },
     });
 
     // Create receipt
-    await db.receipt.create({
+    await tx.receipt.create({
       data: {
-        attemptId: application.id,
+        attemptId: attempt.id,
         fieldsSubmitted: payload || {},
         attachmentsUsed: [],
       },
+    });
+
+    return attempt;
     });
 
     return NextResponse.json(application, { status: 201 });

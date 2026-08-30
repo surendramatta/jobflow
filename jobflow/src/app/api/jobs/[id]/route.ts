@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 
 // GET /api/jobs/[id] - Get single job
 export async function GET(
@@ -7,7 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = request.headers.get('x-user-id') || 'demo-user';
+    const userId = (await getCurrentUser())?.id;
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
 
     const job = await db.jobPosting.findFirst({
@@ -44,7 +46,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = request.headers.get('x-user-id') || 'demo-user';
+    const userId = (await getCurrentUser())?.id;
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
 
     await db.jobPosting.deleteMany({

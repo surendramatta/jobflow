@@ -45,7 +45,7 @@ export default function JobDetailPage() {
   }, [id]);
 
   async function fetchJob() {
-    const res = await fetch(`/api/jobs/${id}`, { headers: { 'x-user-id': 'demo-user' } });
+    const res = await fetch(`/api/jobs/${id}`, { headers: {  } });
     if (res.ok) setJob(await res.json());
   }
 
@@ -55,7 +55,7 @@ export default function JobDetailPage() {
     setLoading(true);
     const res = await fetch(`/api/tailor/${match.id}`, {
       method: 'POST',
-      headers: { 'x-user-id': 'demo-user' },
+      headers: {  },
     });
     if (res.ok) fetchJob();
     setLoading(false);
@@ -68,7 +68,7 @@ export default function JobDetailPage() {
 
     await fetch(`/api/tailor/${match.id}/approve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': 'demo-user' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ draftId: draft.id, decision }),
     });
     fetchJob();
@@ -81,7 +81,7 @@ export default function JobDetailPage() {
 
     await fetch('/api/applications', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': 'demo-user' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ matchId: match.id, draftId: draft.id, method: 'manual' }),
     });
     fetchJob();

@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 import { resumeParser } from '@/lib/resume-parser';
 import { aiService } from '@/lib/ai';
 
 // GET /api/resumes - Get user's profile/resume
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id') || 'demo-user';
+    const userId = (await getCurrentUser())?.id;
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const profile = await db.profile.findUnique({
       where: { userId },
@@ -22,7 +24,8 @@ export async function GET(request: NextRequest) {
 // POST /api/resumes - Upload and parse resume
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id') || 'demo-user';
+    const userId = (await getCurrentUser())?.id;
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const formData = await request.formData();
     const file = formData.get('resume') as File;
 
@@ -69,7 +72,8 @@ export async function POST(request: NextRequest) {
 // PATCH /api/resumes - Update profile settings
 export async function PATCH(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id') || 'demo-user';
+    const userId = (await getCurrentUser())?.id;
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await request.json();
 
     const profile = await db.profile.upsert({

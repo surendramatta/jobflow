@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { Briefcase, FileText, Send, TrendingUp, ArrowRight } from 'lucide-react';
 import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { StatusBadge } from '@/components/status-badge';
 import { ScoreRing } from '@/components/score-ring';
 import { formatDate } from '@/lib/utils';
@@ -53,7 +55,8 @@ async function getRecentApplications(userId: string) {
 }
 
 export default async function DashboardPage() {
-  const userId = 'demo-user';
+  const userId = (await getCurrentUser())?.id;
+  if (!userId) redirect('/login');
   const stats = await getStats(userId);
   const recentJobs = await getRecentJobs(userId);
   const recentApps = await getRecentApplications(userId);

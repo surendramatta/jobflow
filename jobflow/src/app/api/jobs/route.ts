@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 import { jobScraper } from '@/lib/scraper';
 import { aiService } from '@/lib/ai';
 import { z } from 'zod';
@@ -15,8 +16,8 @@ const createJobSchema = z.object({
 // GET /api/jobs - List user's jobs
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Replace with actual auth
-    const userId = request.headers.get('x-user-id') || 'demo-user';
+    const userId = (await getCurrentUser())?.id;
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const jobs = await db.jobPosting.findMany({
       where: { userId },
@@ -44,7 +45,8 @@ export async function GET(request: NextRequest) {
 // POST /api/jobs - Add a new job (with optional scraping)
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id') || 'demo-user';
+    const userId = (await getCurrentUser())?.id;
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await request.json();
     const data = createJobSchema.parse(body);
 

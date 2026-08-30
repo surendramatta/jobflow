@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 import { aiService } from '@/lib/ai';
 
 // POST /api/tailor/[matchId] - Generate tailored resume for a match
@@ -8,8 +9,9 @@ export async function POST(
   { params }: { params: Promise<{ matchId: string }> }
 ) {
   const { matchId } = await params;
+  const userId = (await getCurrentUser())?.id;
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
-    const userId = request.headers.get('x-user-id') || 'demo-user';
 
     // Fetch match with job and user profile
     const match = await db.match.findFirst({
@@ -96,11 +98,11 @@ export async function POST(
   } catch (error) {
     console.error('POST /api/tailor/[matchId] error:', error);
 
-    // Update match status to failed
-    await db.match.update({
-      where: { id: matchId },
+    // Only update the signed-in user's match; preserve the original failure response.
+    await db.match.updateMany({
+      where: { id: matchId, userId },
       data: { status: 'failed' },
-    });
+    }).catch(() => {});
 
     return NextResponse.json({ error: 'Failed to generate tailoring' }, { status: 500 });
   }

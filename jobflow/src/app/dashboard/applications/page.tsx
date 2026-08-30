@@ -34,7 +34,7 @@ export default function ApplicationsPage() {
   }, []);
 
   async function fetchApplications() {
-    const res = await fetch('/api/applications', { headers: { 'x-user-id': 'demo-user' } });
+    const res = await fetch('/api/applications', { headers: {  } });
     if (res.ok) setApplications(await res.json());
   }
 

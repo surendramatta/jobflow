@@ -39,7 +39,7 @@ export default function ResumePage() {
   }, []);
 
   async function fetchProfile() {
-    const res = await fetch('/api/resumes', { headers: { 'x-user-id': 'demo-user' } });
+    const res = await fetch('/api/resumes', { headers: {  } });
     if (res.ok) {
       const data = await res.json();
       setProfile(data);
@@ -63,7 +63,7 @@ export default function ResumePage() {
 
     const res = await fetch('/api/resumes', {
       method: 'POST',
-      headers: { 'x-user-id': 'demo-user' },
+      headers: {  },
       body: formData,
     });
 
@@ -77,7 +77,7 @@ export default function ResumePage() {
   async function saveSettings() {
     await fetch('/api/resumes', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': 'demo-user' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),
     });
     setSaved(true);

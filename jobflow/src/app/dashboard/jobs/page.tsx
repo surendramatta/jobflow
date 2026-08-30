@@ -36,7 +36,7 @@ export default function JobsPage() {
   }, []);
 
   async function fetchJobs() {
-    const res = await fetch('/api/jobs', { headers: { 'x-user-id': 'demo-user' } });
+    const res = await fetch('/api/jobs', { headers: {  } });
     if (res.ok) setJobs(await res.json());
   }
 
@@ -51,7 +51,7 @@ export default function JobsPage() {
 
     const res = await fetch('/api/jobs', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': 'demo-user' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
@@ -67,7 +67,7 @@ export default function JobsPage() {
 
   async function deleteJob(id: string) {
     if (!confirm('Delete this job?')) return;
-    await fetch(`/api/jobs/${id}`, { method: 'DELETE', headers: { 'x-user-id': 'demo-user' } });
+    await fetch(`/api/jobs/${id}`, { method: 'DELETE', headers: {  } });
     fetchJobs();
   }
 

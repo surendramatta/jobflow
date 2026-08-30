@@ -1,4 +1,6 @@
 import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { BarChart3, TrendingUp, Target, Calendar } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -46,7 +48,8 @@ async function getAnalytics(userId: string) {
 }
 
 export default async function AnalyticsPage() {
-  const userId = 'demo-user';
+  const userId = (await getCurrentUser())?.id;
+  if (!userId) redirect('/login');
   const data = await getAnalytics(userId);
 
   const pipelineStages = [
